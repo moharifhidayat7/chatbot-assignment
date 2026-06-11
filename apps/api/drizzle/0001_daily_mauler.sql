@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "scope_enforced" boolean DEFAULT false NOT NULL;

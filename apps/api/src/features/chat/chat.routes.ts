@@ -20,6 +20,7 @@ chat.use('/*', authMiddleware);
 // POST /chat  →  SSE stream
 chat.post('/', async (c) => {
   const userId = c.get('userId');
+  const db = c.var.db;
   const body = await c.req.json<{
     projectId?: string;
     conversationId?: string | null;
@@ -31,29 +32,29 @@ chat.post('/', async (c) => {
     return badRequest(c, 'projectId and messages are required');
   }
 
-  const project = await findProject(body.projectId, userId);
+  const project = await findProject(body.projectId, userId, db);
   if (!project) return notFound(c);
 
   // Resolve or create the conversation
-  let conv = body.conversationId ? await findConversation(body.conversationId, userId) : undefined;
+  let conv = body.conversationId ? await findConversation(body.conversationId, userId, db) : undefined;
   if (!conv) {
-    conv = await createConversation(project.id, userId);
+    conv = await createConversation(project.id, userId, db);
   }
 
   const conversationId = conv.id;
 
   // Persist user messages not yet in storage
-  const stored = await getMessages(conversationId);
+  const stored = await getMessages(conversationId, db);
   const newMessages = body.messages.slice(stored.length);
   for (const msg of newMessages) {
     if (msg.role === 'user' || msg.role === 'assistant') {
-      await appendMessage(conversationId, msg.role, msg.content);
+      await appendMessage(conversationId, msg.role, msg.content, db);
     }
   }
 
   // Set conversation title from first user message
   if (stored.length === 0 && newMessages[0]?.role === 'user') {
-    await updateTitle(conversationId, newMessages[0].content.slice(0, 60));
+    await updateTitle(conversationId, newMessages[0].content.slice(0, 60), db);
   }
 
   const chatMessages = body.messages
@@ -72,13 +73,17 @@ chat.post('/', async (c) => {
     await stream.writeln(`data: ${JSON.stringify({ conversationId })}`);
     await stream.writeln('');
 
-    for await (const delta of streamCompletion(effectiveSystemPrompt, chatMessages, body.model)) {
+    for await (const delta of streamCompletion(effectiveSystemPrompt, chatMessages, {
+      apiKey: c.env.OPENAI_API_KEY,
+      baseURL: c.env.OPENAI_BASE_URL,
+      model: body.model ?? c.env.OPENAI_MODEL,
+    })) {
       fullResponse += delta;
       await stream.writeln(`data: ${JSON.stringify({ delta })}`);
       await stream.writeln('');
     }
 
-    await appendMessage(conversationId, 'assistant', fullResponse.trim());
+    await appendMessage(conversationId, 'assistant', fullResponse.trim(), db);
 
     await stream.writeln('data: [DONE]');
     await stream.writeln('');

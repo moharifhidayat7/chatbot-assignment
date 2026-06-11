@@ -12,7 +12,7 @@ projects.use('/*', authMiddleware);
 // GET /projects
 projects.get('/', async (c) => {
   const userId = c.get('userId');
-  return c.json(await findAllByUser(userId));
+  return c.json(await findAllByUser(userId, c.var.db));
 });
 
 // POST /projects
@@ -24,14 +24,14 @@ projects.post('/', async (c) => {
     return badRequest(c, 'name and systemPrompt are required');
   }
 
-  const project = await create(userId, { name: body.name, systemPrompt: body.systemPrompt, scopeEnforced: body.scopeEnforced });
+  const project = await create(userId, { name: body.name, systemPrompt: body.systemPrompt, scopeEnforced: body.scopeEnforced }, c.var.db);
   return c.json(project, 201);
 });
 
 // GET /projects/:id
 projects.get('/:id', async (c) => {
   const userId = c.get('userId');
-  const project = await findById(c.req.param('id'), userId);
+  const project = await findById(c.req.param('id'), userId, c.var.db);
   return project ? c.json(project) : notFound(c);
 });
 
@@ -39,28 +39,28 @@ projects.get('/:id', async (c) => {
 projects.patch('/:id', async (c) => {
   const userId = c.get('userId');
   const body = await c.req.json<{ name?: string; systemPrompt?: string; scopeEnforced?: boolean }>();
-  const updated = await update(c.req.param('id'), userId, body);
+  const updated = await update(c.req.param('id'), userId, body, c.var.db);
   return updated ? c.json(updated) : notFound(c);
 });
 
 // DELETE /projects/:id
 projects.delete('/:id', async (c) => {
   const userId = c.get('userId');
-  const deleted = await remove(c.req.param('id'), userId);
+  const deleted = await remove(c.req.param('id'), userId, c.var.db);
   return deleted ? c.body(null, 204) : notFound(c);
 });
 
 // GET /projects/:projectId/conversations
 projects.get('/:projectId/conversations', async (c) => {
   const userId = c.get('userId');
-  const convs = await findByProject(c.req.param('projectId'), userId);
+  const convs = await findByProject(c.req.param('projectId'), userId, c.var.db);
   return c.json(convs);
 });
 
 // POST /projects/:projectId/conversations
 projects.post('/:projectId/conversations', async (c) => {
   const userId = c.get('userId');
-  const conv = await createConversation(c.req.param('projectId'), userId);
+  const conv = await createConversation(c.req.param('projectId'), userId, c.var.db);
   return c.json(conv, 201);
 });
 

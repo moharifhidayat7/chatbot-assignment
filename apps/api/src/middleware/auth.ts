@@ -9,7 +9,7 @@ export const authMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   }
 
   const token = header.slice(7);
-  const payload = await verifyAccessToken(token);
+  const payload = await verifyAccessToken(token, c.env.JWT_SECRET);
   if (!payload) {
     return c.json({ message: 'Invalid or expired token' }, 401);
   }

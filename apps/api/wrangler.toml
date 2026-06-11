@@ -1,0 +1,16 @@
+name = "chatbot-api"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+OPENAI_MODEL = "gpt-4o-mini"
+# Set FRONTEND_URL to your deployed frontend origin (e.g. https://your-app.pages.dev)
+# Leave empty or unset to allow only localhost origins
+FRONTEND_URL = ""
+
+# Secrets — set via `wrangler secret put <KEY>` or in .dev.vars for local dev:
+# DATABASE_URL
+# JWT_SECRET
+# OPENAI_API_KEY
+# OPENAI_BASE_URL

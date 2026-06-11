@@ -1,9 +1,9 @@
 import { eq, and, asc } from 'drizzle-orm';
-import { db } from '../../lib/db';
+import type { AppDb } from '../../lib/types';
 import { conversations, messages } from '../../../drizzle/schema';
 import type { Conversation, Message } from './conversations.types';
 
-export async function findByProject(projectId: string, userId: string): Promise<Conversation[]> {
+export async function findByProject(projectId: string, userId: string, db: AppDb): Promise<Conversation[]> {
   return db
     .select()
     .from(conversations)
@@ -11,7 +11,7 @@ export async function findByProject(projectId: string, userId: string): Promise<
     .orderBy(asc(conversations.updatedAt));
 }
 
-export async function findById(id: string, userId: string): Promise<Conversation | undefined> {
+export async function findById(id: string, userId: string, db: AppDb): Promise<Conversation | undefined> {
   const [conv] = await db
     .select()
     .from(conversations)
@@ -20,7 +20,7 @@ export async function findById(id: string, userId: string): Promise<Conversation
   return conv?.userId === userId ? conv : undefined;
 }
 
-export async function create(projectId: string, userId: string): Promise<Conversation> {
+export async function create(projectId: string, userId: string, db: AppDb): Promise<Conversation> {
   const [conv] = await db
     .insert(conversations)
     .values({ projectId, userId })
@@ -28,14 +28,14 @@ export async function create(projectId: string, userId: string): Promise<Convers
   return conv;
 }
 
-export async function updateTitle(id: string, title: string): Promise<void> {
+export async function updateTitle(id: string, title: string, db: AppDb): Promise<void> {
   await db
     .update(conversations)
     .set({ title, updatedAt: new Date().toISOString() })
     .where(eq(conversations.id, id));
 }
 
-export async function getMessages(conversationId: string): Promise<Message[]> {
+export async function getMessages(conversationId: string, db: AppDb): Promise<Message[]> {
   return db
     .select()
     .from(messages)
@@ -43,7 +43,7 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
     .orderBy(asc(messages.createdAt));
 }
 
-export async function remove(id: string, userId: string): Promise<boolean> {
+export async function remove(id: string, userId: string, db: AppDb): Promise<boolean> {
   const result = await db
     .delete(conversations)
     .where(and(eq(conversations.id, id), eq(conversations.userId, userId)))
@@ -55,6 +55,7 @@ export async function appendMessage(
   conversationId: string,
   role: Message['role'],
   content: string,
+  db: AppDb,
 ): Promise<Message> {
   const [msg] = await db
     .insert(messages)

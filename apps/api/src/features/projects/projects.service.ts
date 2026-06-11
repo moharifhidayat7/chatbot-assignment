@@ -1,13 +1,13 @@
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from '../../lib/db';
+import type { AppDb } from '../../lib/types';
 import { projects } from '../../../drizzle/schema';
 import type { Project, CreateProjectDto, UpdateProjectDto } from './projects.types';
 
-export async function findAllByUser(userId: string): Promise<Project[]> {
+export async function findAllByUser(userId: string, db: AppDb): Promise<Project[]> {
   return db.select().from(projects).where(eq(projects.userId, userId)).orderBy(desc(projects.updatedAt));
 }
 
-export async function findById(id: string, userId: string): Promise<Project | undefined> {
+export async function findById(id: string, userId: string, db: AppDb): Promise<Project | undefined> {
   const [project] = await db
     .select()
     .from(projects)
@@ -16,7 +16,7 @@ export async function findById(id: string, userId: string): Promise<Project | un
   return project;
 }
 
-export async function create(userId: string, dto: CreateProjectDto): Promise<Project> {
+export async function create(userId: string, dto: CreateProjectDto, db: AppDb): Promise<Project> {
   const [project] = await db
     .insert(projects)
     .values({ userId, name: dto.name, systemPrompt: dto.systemPrompt, scopeEnforced: dto.scopeEnforced ?? false })
@@ -24,7 +24,12 @@ export async function create(userId: string, dto: CreateProjectDto): Promise<Pro
   return project;
 }
 
-export async function update(id: string, userId: string, dto: UpdateProjectDto): Promise<Project | undefined> {
+export async function update(
+  id: string,
+  userId: string,
+  dto: UpdateProjectDto,
+  db: AppDb,
+): Promise<Project | undefined> {
   const [updated] = await db
     .update(projects)
     .set({
@@ -38,7 +43,7 @@ export async function update(id: string, userId: string, dto: UpdateProjectDto):
   return updated;
 }
 
-export async function remove(id: string, userId: string): Promise<boolean> {
+export async function remove(id: string, userId: string, db: AppDb): Promise<boolean> {
   const result = await db
     .delete(projects)
     .where(and(eq(projects.id, id), eq(projects.userId, userId)))

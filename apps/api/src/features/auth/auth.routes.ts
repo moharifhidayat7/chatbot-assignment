@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
+import type { AppEnv } from '../../lib/types';
 import { register, login, rotateRefreshToken, deleteRefreshToken, signAccessToken } from './auth.service';
 import { badRequest, conflict } from '../../lib/errors';
 
-const auth = new Hono();
+const auth = new Hono<AppEnv>();
 
 auth.post('/register', async (c) => {
   const body = await c.req.json<{ name?: string; email?: string; password?: string }>();
@@ -15,7 +16,11 @@ auth.post('/register', async (c) => {
   }
 
   try {
-    const result = await register({ name: body.name, email: body.email, password: body.password });
+    const result = await register(
+      { name: body.name, email: body.email, password: body.password },
+      c.var.db,
+      c.env.JWT_SECRET,
+    );
     return c.json(result, 201);
   } catch (err) {
     return conflict(c, err instanceof Error ? err.message : 'Registration failed');
@@ -30,7 +35,7 @@ auth.post('/login', async (c) => {
   }
 
   try {
-    const result = await login({ email: body.email, password: body.password });
+    const result = await login({ email: body.email, password: body.password }, c.var.db, c.env.JWT_SECRET);
     return c.json(result);
   } catch (err) {
     return c.json({ message: err instanceof Error ? err.message : 'Login failed' }, 401);
@@ -41,16 +46,16 @@ auth.post('/refresh', async (c) => {
   const body = await c.req.json<{ refreshToken?: string }>();
   if (!body.refreshToken) return badRequest(c, 'refreshToken is required');
 
-  const result = await rotateRefreshToken(body.refreshToken);
+  const result = await rotateRefreshToken(body.refreshToken, c.var.db);
   if (!result) return c.json({ message: 'Invalid or expired refresh token' }, 401);
 
-  const accessToken = await signAccessToken(result.userId);
+  const accessToken = await signAccessToken(result.userId, c.env.JWT_SECRET);
   return c.json({ accessToken, refreshToken: result.refreshToken });
 });
 
 auth.post('/logout', async (c) => {
   const body = await c.req.json<{ refreshToken?: string }>();
-  if (body.refreshToken) await deleteRefreshToken(body.refreshToken);
+  if (body.refreshToken) await deleteRefreshToken(body.refreshToken, c.var.db);
   return c.body(null, 204);
 });
 
